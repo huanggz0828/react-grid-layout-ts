@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "*": ["types/*"],
+      "~/*": ["src/*"]
+    },
+    "strictNullChecks": true,
+    "resolveJsonModule": true,
+    "moduleResolution": "node",
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "jsx": "preserve",
+    "noUnusedParameters": true,
+    "noUnusedLocals": true,
+    "noImplicitAny": true,
+    "target": "es6",
+    "declaration": true,
+    "lib": ["dom", "es7"],
+    "outDir": "es"
+  },
+  "exclude": ["node_modules"],
+  "include": ["lib/**/*"]
+}

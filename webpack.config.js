@@ -5,11 +5,11 @@ const webpack = require("webpack");
 module.exports = {
   mode: "production",
   optimization: {
-    minimize: true
+    minimize: false
   },
   context: __dirname,
   entry: {
-    "react-grid-layout": "./index-dev.js"
+    "react-grid-layout": "./index-dev.ts"
   },
   output: {
     path: __dirname + "/dist",
@@ -42,6 +42,21 @@ module.exports = {
         options: {
           cacheDirectory: true
         }
+      },
+      {
+        test: /.tsx?$/,
+        use: [
+          "babel-loader?cacheDirectory=true",
+          {
+            loader: "esbuild-loader",
+            options: {
+              loader: "tsx",
+              target: "es2015",
+              tsconfigRaw: require("./tsconfig.json")
+            }
+          }
+        ],
+        exclude: [/node_modules/]
       }
     ]
   },
@@ -54,6 +69,6 @@ module.exports = {
     new webpack.optimize.ModuleConcatenationPlugin()
   ],
   resolve: {
-    extensions: [".js", ".jsx"]
+    extensions: [".js", ".jsx", ".ts", ".tsx"]
   }
 };
