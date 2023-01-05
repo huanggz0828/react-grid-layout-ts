@@ -2,7 +2,6 @@
 import PropTypes from "prop-types";
 import React from "react";
 import type {
-  DragOverEvent,
   EventCallback,
   CompactType,
   Layout,
@@ -96,7 +95,7 @@ export type DefaultProps = Props & {
   width: number;
 };
 
-export default {
+const propTypes = {
   //
   // Basic props
   //
@@ -235,4 +234,6 @@ export default {
 
   // Optional ref for getting a reference for the wrapping div.
   innerRef: PropTypes.any
-};
+}
+
+export default propTypes;

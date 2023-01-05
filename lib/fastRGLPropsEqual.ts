@@ -18,7 +18,7 @@ keys.splice(keys.indexOf("children"), 1);
 // In most cases we want to do a simple equality comparison,
 // but we have some arrays and tuples and objects we want
 // to do a shallow comparison on.
-function getEqualType(key) {
+function getEqualType(key: any) {
   if (
     [
       PropTypes.number,
@@ -34,7 +34,7 @@ function getEqualType(key) {
 
 // Exports a function that compares a and b. `isEqualImpl` is a required
 // third prop, as we can't otherwise access it.
-module.exports = () =>
+export default () =>
   eval(`
   function fastRGLPropsEqual(a, b, isEqualImpl) {
     if (a === b) return true;
@@ -43,4 +43,4 @@ module.exports = () =>
     );
   }
   fastRGLPropsEqual;
-`);
+`)

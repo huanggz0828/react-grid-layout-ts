@@ -8,15 +8,15 @@ import {
   synchronizeLayoutWithChildren,
   validateLayout,
   noop,
-  type Layout
+  Layout
 } from "./utils";
 import {
   getBreakpointFromWidth,
   getColsFromBreakpoint,
   findOrGenerateResponsiveLayout,
-  type ResponsiveLayout,
-  type OnLayoutChangeCallback,
-  type Breakpoints
+  ResponsiveLayout,
+  OnLayoutChangeCallback,
+  Breakpoints
 } from "./responsiveUtils";
 import ReactGridLayout from "./ReactGridLayout";
 import { Props as RGLProps } from "./ReactGridLayoutPropTypes";
