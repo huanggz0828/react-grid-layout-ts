@@ -34,13 +34,12 @@ function getEqualType(key: any) {
 
 // Exports a function that compares a and b. `isEqualImpl` is a required
 // third prop, as we can't otherwise access it.
-export default () =>
-  eval(`
-  function fastRGLPropsEqual(a, b, isEqualImpl) {
-    if (a === b) return true;
-    return (
-      ${keys.map(getEqualType).join(" && ")}
-    );
-  }
-  fastRGLPropsEqual;
-`)
+export default eval(`
+    function fastRGLPropsEqual(a, b, isEqualImpl) {
+      if (a === b) return true;
+      return (
+        ${keys.map(getEqualType).join(" && ")}
+      );
+    }
+    fastRGLPropsEqual;
+  `);

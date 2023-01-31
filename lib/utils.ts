@@ -1,6 +1,16 @@
 // @flow
-import isEqual from "lodash/isEqual";
 import React from "react";
+import { get, isNil, isEqual } from "./lodash-es";
+export type Bounded = "left" | "right" | "top" | "bottom"
+export type ResizeHandleAxis =
+  | "s"
+  | "w"
+  | "e"
+  | "n"
+  | "sw"
+  | "nw"
+  | "se"
+  | "ne";
 export type LayoutItem = {
   w: number;
   h: number;
@@ -15,8 +25,9 @@ export type LayoutItem = {
   static?: boolean;
   isDraggable?: boolean;
   isResizable?: boolean;
-  resizeHandles?: Array<"s" | "w" | "e" | "n" | "sw" | "nw" | "se" | "ne">;
-  isBounded?: boolean;
+  resizeHandles?: ResizeHandleAxis[];
+  isBounded?: Bounded[];
+  shuttle?: boolean;
 };
 export type Layout = LayoutItem[];
 export type Position = {
@@ -36,14 +47,22 @@ export type ReactDraggableCallbackData = {
 };
 
 export type PartialPosition = { left: number; top: number };
-export type DroppingPosition = { left: number; top: number; e: React.DragEvent };
+export type DroppingPosition = {
+  left: number;
+  top: number;
+  e: React.DragEvent;
+};
 export type Size = { width: number; height: number };
 export type GridDragEvent = {
-  e: Event;
+  e: React.DragEvent;
   node: HTMLElement;
   newPosition: PartialPosition;
 };
-export type GridResizeEvent = { e: Event; node: HTMLElement; size: Size };
+export type GridResizeEvent = {
+  e: React.DragEvent;
+  node: HTMLElement;
+  size: Size;
+};
 export type DragOverEvent = MouseEvent & {
   nativeEvent: {
     layerX: number;
@@ -57,7 +76,7 @@ export type EventCallback = (
   oldItem?: LayoutItem,
   newItem?: LayoutItem,
   placeholder?: LayoutItem,
-  evt?: Event,
+  evt?: React.DragEvent,
   el?: HTMLElement
 ) => void;
 export type CompactType = "horizontal" | "vertical" | undefined;
@@ -136,7 +155,8 @@ export function cloneLayoutItem(layoutItem: LayoutItem): LayoutItem {
     isDraggable: layoutItem.isDraggable,
     isResizable: layoutItem.isResizable,
     resizeHandles: layoutItem.resizeHandles,
-    isBounded: layoutItem.isBounded
+    isBounded: layoutItem.isBounded,
+    shuttle: layoutItem.shuttle
   };
 }
 
@@ -144,11 +164,20 @@ export function cloneLayoutItem(layoutItem: LayoutItem): LayoutItem {
  * Comparing React `children` is a bit difficult. This is a good way to compare them.
  * This will catch differences in keys, order, and length.
  */
-export function childrenEqual(a?: JSX.Element, b?: JSX.Element): boolean {
-  return isEqual(
-    React.Children.map(a, c => c?.key),
-    React.Children.map(b, c => c?.key)
-  );
+export function childrenEqual(
+  a?: React.ReactNode,
+  b?: React.ReactNode
+): boolean {
+  const getChildren = (children: React.ReactNode) =>
+    React.Children.map(children, c =>
+      typeof c === "string" ||
+      typeof c === "number" ||
+      typeof c === "boolean" ||
+      isNil(c)
+        ? c
+        : get(c, "key")
+    );
+  return isEqual(getChildren(a), getChildren(b));
 }
 
 /**
@@ -159,8 +188,7 @@ export function childrenEqual(a?: JSX.Element, b?: JSX.Element): boolean {
  * function in conjunction with preval to generate the fastest possible comparison
  * function, tuned for exactly our props.
  */
-type FastRGLPropsEqual = (obj1: Object, obj2: Object, fn: Function) => boolean;
-export const fastRGLPropsEqual: FastRGLPropsEqual = require("./fastRGLPropsEqual");
+export { default as fastRGLPropsEqual } from "./fastRGLPropsEqual";
 
 // Like the above, but a lot simpler.
 export function fastPositionEqual(a: Position, b: Position): boolean {
@@ -669,7 +697,7 @@ export function sortLayoutItemsByColRow(layout: Layout): Layout {
  */
 export function synchronizeLayoutWithChildren(
   initialLayout: Layout,
-  children: JSX.Element,
+  children: React.ReactNode,
   cols: number,
   compactType: CompactType,
   allowOverlap?: boolean
@@ -766,10 +794,19 @@ export function compactType(props?: {
   return verticalCompact === false ? undefined : compactType;
 }
 
-function log(...args : any) {
+function log(...args: any) {
   if (!DEBUG) return;
   // eslint-disable-next-line no-console
   console.log(...args);
 }
 
 export const noop = () => {};
+
+export function findInArray<T extends any>(
+  array: T[] | TouchList,
+  callback: Function
+) {
+  for (let i = 0, length = array.length; i < length; i++) {
+    if (callback.apply(callback, [array[i], i, array])) return array[i];
+  }
+}

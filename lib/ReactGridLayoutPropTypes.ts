@@ -1,22 +1,9 @@
 // @flow
 import PropTypes from "prop-types";
 import React from "react";
-import type {
-  EventCallback,
-  CompactType,
-  Layout,
-  LayoutItem
-} from "./utils";
+import type { EventCallback, CompactType, Layout, LayoutItem, ResizeHandleAxis, Bounded } from "./utils";
 
-export type ResizeHandleAxis =
-  | "s"
-  | "w"
-  | "e"
-  | "n"
-  | "sw"
-  | "nw"
-  | "se"
-  | "ne";
+
 export type ResizeHandle =
   | React.ReactElement<any>
   | ((
@@ -43,7 +30,8 @@ export const resizeHandleType = PropTypes.oneOfType([
   PropTypes.func
 ]);
 
-export type Props = {
+export type ReactGridLayoutProps = {
+  groupId?: string;
   className: string;
   style: Object;
   width: number;
@@ -58,7 +46,7 @@ export type Props = {
   containerPadding?: [number, number];
   rowHeight: number;
   maxRows: number;
-  isBounded: boolean;
+  isBounded?: Bounded[];
   isDraggable: boolean;
   isResizable: boolean;
   isDroppable: boolean;
@@ -75,6 +63,11 @@ export type Props = {
   onDrag: EventCallback;
   onDragStart: EventCallback;
   onDragStop: EventCallback;
+  onDragCancel: (
+    layout: Layout,
+    layoutItem: LayoutItem,
+    nearestId: string
+  ) => void;
   onResize: EventCallback;
   onResizeStart: EventCallback;
   onResizeStop: EventCallback;
@@ -86,11 +79,11 @@ export type Props = {
     item?: LayoutItem,
     e?: React.DragEvent<Element>
   ) => void;
-  children: JSX.Element;
+  children: React.ReactNode;
   innerRef?: React.RefObject<HTMLDivElement>;
 };
 
-export type DefaultProps = Props & {
+export type DefaultProps = ReactGridLayoutProps & {
   children: JSX.Element;
   width: number;
 };
@@ -118,7 +111,7 @@ const propTypes = {
   draggableHandle: PropTypes.string,
 
   // Deprecated
-  verticalCompact: function (props: Props) {
+  verticalCompact: function (props: ReactGridLayoutProps) {
     if (
       props.verticalCompact === false &&
       process.env.NODE_ENV !== "production"
@@ -135,7 +128,7 @@ const propTypes = {
 
   // layout is an array of object with the format:
   // {x: Number, y: Number, w: Number, h: Number, i: String}
-  layout: function (props: Props) {
+  layout: function (props: ReactGridLayoutProps) {
     var layout = props.layout;
     // I hope you're setting the data-grid property on the grid items
     if (layout === undefined) return;
@@ -214,8 +207,8 @@ const propTypes = {
   }),
 
   // Children must not have duplicate keys.
-  children: function (props: Props, propName: string) {
-    const children = props[propName as keyof Props];
+  children: function (props: ReactGridLayoutProps, propName: string) {
+    const children = props[propName as keyof ReactGridLayoutProps];
 
     // Check children keys for duplicates. Throw if found.
     const keys: { [key: string]: boolean } = {};
@@ -234,6 +227,6 @@ const propTypes = {
 
   // Optional ref for getting a reference for the wrapping div.
   innerRef: PropTypes.any
-}
+};
 
 export default propTypes;

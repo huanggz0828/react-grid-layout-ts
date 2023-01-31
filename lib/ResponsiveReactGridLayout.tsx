@@ -1,8 +1,8 @@
 // @flow
 import * as React from "react";
 import PropTypes from "prop-types";
-import isEqual from "lodash/isEqual";
 
+import { isEqual } from "./lodash-es";
 import {
   cloneLayout,
   synchronizeLayoutWithChildren,
@@ -19,7 +19,7 @@ import {
   Breakpoints
 } from "./responsiveUtils";
 import ReactGridLayout from "./ReactGridLayout";
-import { Props as RGLProps } from "./ReactGridLayoutPropTypes";
+import { ReactGridLayoutProps as RGLProps } from "./ReactGridLayoutPropTypes";
 
 // $FlowFixMe[method-unbinding]
 const type = (obj: Object) => Object.prototype.toString.call(obj);

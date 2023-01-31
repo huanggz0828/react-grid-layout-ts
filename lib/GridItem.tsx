@@ -1,16 +1,25 @@
 // @flow
 import React from "react";
+import { includes } from "./lodash-es";
 import PropTypes from "prop-types";
 import { DraggableCore } from "react-draggable";
 import { Resizable, ResizeCallbackData } from "react-resizable";
-import { fastPositionEqual, perc, setTopLeft, setTransform } from "./utils";
+import {
+  Bounded,
+  LayoutItem,
+  ResizeHandleAxis,
+  fastPositionEqual,
+  perc,
+  setTopLeft,
+  setTransform
+} from "./utils";
 import {
   calcGridItemPosition,
-  calcGridItemWHPx,
-  calcGridColWidth,
   calcXY,
   calcWH,
-  clamp
+  clamp,
+  calcGridItemWHPx,
+  calcGridColWidth
 } from "./calculateUtils";
 import {
   resizeHandleAxesType,
@@ -27,10 +36,9 @@ import type {
 } from "./utils";
 
 import type { PositionParams } from "./calculateUtils";
-import type {
-  ResizeHandleAxis,
-  ResizeHandle
-} from "./ReactGridLayoutPropTypes";
+import type { ResizeHandle } from "./ReactGridLayoutPropTypes";
+import { detectNearestEmptySortable, matchesSelector } from "./group";
+import ReactGridLayout from "./ReactGridLayout";
 
 const DraggableCoreComp: any = DraggableCore;
 
@@ -58,12 +66,16 @@ type Props = {
   maxRows: number;
   isDraggable: boolean;
   isResizable: boolean;
-  isBounded: boolean;
+  isBounded?: Bounded[];
   static?: boolean;
+  shuttle?: boolean;
   useCSSTransforms?: boolean;
   usePercentages?: boolean;
   transformScale: number;
   droppingPosition?: DroppingPosition;
+  groupId?: string;
+  parentRef?: React.RefObject<HTMLDivElement>;
+  mockDragItem?: LayoutItem;
 
   className: string;
   style?: Object;
@@ -85,9 +97,17 @@ type Props = {
   resizeHandles?: ResizeHandleAxis[];
   resizeHandle?: ResizeHandle;
 
+  clearMockDropItem?: () => void;
   onDrag?: GridItemCallback<GridDragEvent>;
   onDragStart?: GridItemCallback<GridDragEvent>;
   onDragStop?: GridItemCallback<GridDragEvent>;
+  onDragCancel?: (
+    i: string,
+    x: number,
+    y: number,
+    nearest: any,
+    e: React.DragEvent & { offsetX: number; offsetY: number }
+  ) => void;
   onResize?: GridItemCallback<GridResizeEvent>;
   onResizeStart?: GridItemCallback<GridResizeEvent>;
   onResizeStop?: GridItemCallback<GridResizeEvent>;
@@ -209,7 +229,7 @@ export default class GridItem extends React.Component<Props, State> {
     className: ""
   };
 
-  elementRef: React.RefObject<HTMLDivElement> = React.createRef();
+  elementRef = React.createRef<HTMLDivElement>();
 
   shouldComponentUpdate(nextProps: Props, nextState: State): boolean {
     // We can't deeply compare children. If the developer memoizes them, we can
@@ -250,7 +270,7 @@ export default class GridItem extends React.Component<Props, State> {
   // When a droppingPosition is present, this means we should fire a move event, as if we had moved
   // this element by `x, y` pixels.
   moveDroppingItem(prevProps: Partial<Props>) {
-    const { droppingPosition } = this.props;
+    const { droppingPosition, handle } = this.props;
     if (!droppingPosition) return;
     const node = this.elementRef.current;
     // Can't find DOM node (are we unmounted?)
@@ -265,6 +285,21 @@ export default class GridItem extends React.Component<Props, State> {
     const shouldDrag =
       (dragging && droppingPosition.left !== prevDroppingPosition.left) ||
       droppingPosition.top !== prevDroppingPosition.top;
+
+    if (this.props.mockDragItem?.i) {
+      const children = this.elementRef.current?.childNodes;
+      if (children?.length) {
+        children.forEach((child: HTMLElement) => {
+          const match = matchesSelector(child, handle);
+          if (match) {
+            const event = document.createEvent("HTMLEvents");
+            event.initEvent("mousedown", true, true);
+            child.dispatchEvent(event);
+          }
+        });
+      }
+      this.props.clearMockDropItem && this.props.clearMockDropItem();
+    }
 
     if (!dragging) {
       this.onDragStart(droppingPosition.e, {
@@ -284,7 +319,7 @@ export default class GridItem extends React.Component<Props, State> {
     }
   }
 
-  getPositionParams(props: Props = this.props): PositionParams {
+  getPositionParams(props: PositionParams = this.props): PositionParams {
     return {
       cols: props.cols,
       containerPadding: props.containerPadding,
@@ -467,7 +502,7 @@ export default class GridItem extends React.Component<Props, State> {
     e,
     { node, deltaX, deltaY }
   ) => {
-    const { onDrag } = this.props;
+    const { isBounded, onDrag, i, w, h, groupId, shuttle } = this.props;
     if (!onDrag) return;
 
     if (!this.state.dragging) {
@@ -476,23 +511,30 @@ export default class GridItem extends React.Component<Props, State> {
     let top = this.state.dragging.top + deltaY;
     let left = this.state.dragging.left + deltaX;
 
-    const { isBounded, i, w, h, containerWidth } = this.props;
     const positionParams = this.getPositionParams();
 
     // Boundary calculations; keeps items within the grid
-    if (isBounded) {
+    if (isBounded?.length) {
       const { offsetParent } = node;
 
       if (offsetParent) {
-        const { margin, rowHeight } = this.props;
+        const { margin, rowHeight, containerWidth } = this.props;
         const bottomBoundary =
           offsetParent.clientHeight - calcGridItemWHPx(h, rowHeight, margin[1]);
-        top = clamp(top, 0, bottomBoundary);
+        top = clamp(
+          top,
+          includes(isBounded, "top") ? 0 : -Infinity,
+          includes(isBounded, "bottom") ? bottomBoundary : Infinity
+        );
 
         const colWidth = calcGridColWidth(positionParams);
         const rightBoundary =
           containerWidth - calcGridItemWHPx(w, colWidth, margin[0]);
-        left = clamp(left, 0, rightBoundary);
+        left = clamp(
+          left,
+          includes(isBounded, "left") ? 0 : -Infinity,
+          includes(isBounded, "right") ? rightBoundary : Infinity
+        );
       }
     }
 
@@ -501,11 +543,40 @@ export default class GridItem extends React.Component<Props, State> {
 
     // Call callback with this data
     const { x, y } = calcXY(positionParams, top, left, w, h);
+    if (groupId && shuttle) {
+      let nearest = detectNearestEmptySortable(e.clientX, e.clientY);
+      if (nearest && nearest.elementRef !== this.props.parentRef) {
+        const event = document.createEvent("HTMLEvents");
+        event.initEvent("mouseup", true, true);
+        document.dispatchEvent(event);
+        this.moveNearest(nearest, { offsetX: 0, offsetY: 0, ...e });
+      }
+    }
     return onDrag.call(this, i, x, y, {
       e,
       node,
       newPosition
     });
+  };
+
+  moveNearest = (
+    nearest: ReactGridLayout,
+    e: React.DragEvent & { offsetX: number; offsetY: number }
+  ) => {
+    const { onDragCancel, i, w, h } = this.props;
+    const { width, margin, containerPadding, cols, rowHeight, maxRows } =
+      nearest.props;
+    const positionParams = {
+      margin,
+      cols,
+      containerPadding: containerPadding || margin,
+      rowHeight,
+      maxRows,
+      containerWidth: width
+    };
+    const { offsetX, offsetY } = e;
+    const { x, y } = calcXY(positionParams, offsetY, offsetX, w, h);
+    onDragCancel?.call(this, i, x, y, nearest, e);
   };
 
   /**
