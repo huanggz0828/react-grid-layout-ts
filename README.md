@@ -7,10 +7,10 @@ the changed options and the new group drag API as follows.
 ```typescript
 // Item can be dragged between layouts with the same id
 groupId?: string
-// The old isBounded is a boolean value and can only be turned on and off.
+// The old isBounded is a boolean value can only be turned on and off.
 // Now you can control four boundaries
 isBounded?: Array<"left" | "right" | "top" | "bottom">
-// When item drag leaves the current layout and enters a new layout
+// When item drag from current layout to new layout
 // The current layout will trigger onDragCancel function
 onDragCancel?: (layout: Layout, layoutItem: LayoutItem, nearestId: string)=> void;
 ```
