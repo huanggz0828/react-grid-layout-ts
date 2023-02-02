@@ -5,7 +5,7 @@ For a comprehensive list of options, please visit [https://github.com/react-grid
 the changed options and the new group drag API as follows.
 
 ```typescript
-// Item can be dragged between layouts with the same id
+// Item can be dragged between layouts with same groupId
 groupId?: string
 // The old isBounded is a boolean value can only be turned on and off.
 // Now you can control four boundaries
